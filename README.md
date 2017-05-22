@@ -7,7 +7,9 @@ The name of this project is missing leading, it only convert xml to json for now
 ## Run the application locally
 ```
 sbt run
-PUT a XML file into "localhost:9000/upLoadXMLToMongo/uploadToMongo/"
+PUT a XML file into "localhost:9000/upLoadXMLToMongo/uploadXMLToMongoAsFile/"
+
+then there will two new files in the tmp folder, the two file should be the same
 ```
 
 ### License
