@@ -58,23 +58,30 @@ trait MicroserviceHelloWorld extends BaseController {
 					val filename = file.filename
 					val fileSavingPath = s"./tmp/$filename"
 					val fileEntity = new java.io.File(fileSavingPath)
-					val filePath = fileEntity.toPath
 
-					val sourceInByteString = FileIO.fromPath(filePath)
-					val fileInByteArray = javaFiles.readAllBytes(filePath)
+					fileEntity.delete()
+
+					val uploadedXMLFile = file.ref
+					uploadedXMLFile.moveTo(fileEntity)
 
 					val xml = scala.xml.XML.loadFile(fileEntity)
+					println(xml)
+					println(Json.toJson(xml))
+
 //					Xml.toJson(xml)
 //					for (x <- xml) {
-						println(Json.toJson(xml))
+//						println(Json.toJson(xml))
 //					}
 //					println(Json.toJson(compactXml(xml)))
 
-					println(xml)
 
-					val bodyToMongo = HttpEntity.Streamed(sourceInByteString, Some(fileEntity.length), Some("text/xml"))
-					println(sourceInByteString)
-					println(bodyToMongo)
+
+//					val filePath = fileEntity.toPath
+//					val sourceInByteString = FileIO.fromPath(filePath)
+//					val fileInByteArray = javaFiles.readAllBytes(filePath)
+//					val bodyToMongo = HttpEntity.Streamed(sourceInByteString, Some(fileEntity.length), Some("text/xml"))
+//					println(sourceInByteString)
+//					println(bodyToMongo)
 
 				}
 				Ok("File saved")
@@ -89,7 +96,7 @@ trait MicroserviceHelloWorld extends BaseController {
 				JsString(e.text)
 			else
 				JsObject(e.child.collect {
-					case e: Elem => e.label -> write(e)
+					case e: Elem => e.label -> writes(e)
 				})
 		}
 	}
@@ -108,6 +115,6 @@ trait MicroserviceHelloWorld extends BaseController {
 //		}
 //	}
 
-	def write(node: Node) =
-		JsString(node.text)
+//	def write(node: Node) =
+//		JsString(node.text)
 }
