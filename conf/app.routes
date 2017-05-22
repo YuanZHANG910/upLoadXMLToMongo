@@ -1,4 +1,3 @@
 # microservice specific routes
 
-POST       /upload/                   uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.upload
 PUT        /uploadToMongo/            uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.uploadToMongo
