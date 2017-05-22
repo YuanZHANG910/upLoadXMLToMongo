@@ -1,3 +1,4 @@
 # microservice specific routes
 
-POST       /upload/:envelopeId/:fileId                  uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.upload(envelopeId: String, fileId: String)
+POST       /upload/                   uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.upload
+PUT        /uploadToMongo/            uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.uploadToMongo

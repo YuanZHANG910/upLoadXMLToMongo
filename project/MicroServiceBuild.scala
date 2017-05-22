@@ -48,6 +48,7 @@ private object AppDependencies {
     "com.typesafe.akka" % "akka-actor_2.11" % akkaVersion,
     "com.typesafe.akka" % "akka-testkit_2.11" % akkaVersion,
     "org.typelevel" %% "cats" % catsVersion,
+    "net.liftweb" %% "lift-json" % "2.6+",
     "com.google.code.findbugs" % "jsr305" % "2.0.3")
 
   trait TestDependencies {

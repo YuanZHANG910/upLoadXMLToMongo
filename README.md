@@ -2,7 +2,13 @@
 
 [![Build Status](https://travis-ci.org/hmrc/upLoadXMLToMongo.svg)](https://travis-ci.org/hmrc/upLoadXMLToMongo) [ ![Download](https://api.bintray.com/packages/hmrc/releases/upLoadXMLToMongo/images/download.svg) ](https://bintray.com/hmrc/releases/upLoadXMLToMongo/_latestVersion)
 
-This is a placeholder README.md for a new repository
+The name of this project is missing leading, it only convert xml to json for now.
+
+## Run the application locally
+```
+sbt run
+PUT a XML file into "localhost:9000/upLoadXMLToMongo/uploadToMongo/"
+```
 
 ### License
 
