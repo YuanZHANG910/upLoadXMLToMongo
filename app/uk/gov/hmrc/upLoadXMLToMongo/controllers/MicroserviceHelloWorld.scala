@@ -24,59 +24,44 @@ trait MicroserviceHelloWorld extends BaseController {
 	//Collection name
 	val coll: MongoCollection = db("test")
 
-	def uploadXMLToMongoAsFile: Action[MultipartFormData[Files.TemporaryFile]] = Action(parse.multipartFormData) { request =>
+	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = Action(parse.multipartFormData) { request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
-				formData.files.foreach { file =>
+				val file = formData.files.head
+				val testFile = saveXMLFileFromUserAndLoadTheXML(file)
+				val fileInByteArray = javaFiles.readAllBytes(Paths.get(testFile.filePath))
+				val xml = testFile.xml
 
-					val testFile = saveXMLFileFromUserAndLoadTheXML(file)
+				printDetail(xml)
 
-					val fileInByteArray = javaFiles.readAllBytes(Paths.get(testFile.filePath))
+				val saveToMongoQuery = MongoDBObject("FileName" -> testFile.fileName, writesString(xml), "FileEntity" -> fileInByteArray)
+				coll.insert(saveToMongoQuery)
 
-					val xml = testFile.xml
+				val idInMongo = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
 
-					printDetail(xml)
-
-					val saveToMongoQuery = MongoDBObject("file" -> fileInByteArray)
-
-					coll.insert(saveToMongoQuery)
-
-					val getByteArrayFromMongoQuery = MongoDBObject("file" -> fileInByteArray)
-
-					val byteDataFromMongo = getByteData(coll.findOne(getByteArrayFromMongoQuery).get)
-
-					val outputFolder = s"./tmp/"
-
-					val pathFile:File = new File(outputFolder)
-					if (!pathFile.exists) pathFile.mkdirs
-
-					val bos = new BufferedOutputStream(new FileOutputStream(s"$outputFolder/down-${testFile.fileName}"))
-					Stream.continually(bos.write(byteDataFromMongo))
-					bos.close()
-
-				}
-				Ok("File saved")
+				Ok(s"File saved at $idInMongo")
 			case _ => BadRequest("not saved")
 
 		}
 	}
 
-	def uploadXMLToMongoAsBson: Action[MultipartFormData[Files.TemporaryFile]] = Action(parse.multipartFormData) { request =>
-		request.body match {
-			case formData: MultipartFormData[Files.TemporaryFile] =>
-				formData.files.foreach { file =>
+	def downXMLFromMongoById(idInMongo: String) = Action { request =>
 
-					val xml = saveXMLFileFromUserAndLoadTheXML(file).xml
+		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
+			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
 
-					printDetail(xml)
+		val fileName = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo))).head.get("FileName").toString
 
-					toMongoDB(xml)
+		saveXMLFileFromMongoAndLoadTheXML(fileName, byteDataFromMongo)
 
-				}
-				Ok("File saved")
-			case _ => BadRequest("not saved")
+	}
 
-		}
+	def downXMLFromMongoByName(nameInMongo: String) = Action { request =>
+
+		val byteDataFromMongo = coll.findOne(MongoDBObject("FileName" -> nameInMongo),
+			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
+
+		saveXMLFileFromMongoAndLoadTheXML(nameInMongo, byteDataFromMongo)
 	}
 
 	def saveXMLFileFromUserAndLoadTheXML(file: MultipartFormData.FilePart[Files.TemporaryFile]): TestFile = {
@@ -95,17 +80,17 @@ trait MicroserviceHelloWorld extends BaseController {
 		TestFile(filename, fileSavingPath, xml)
 	}
 
-	def getByteData(mongoResult: MongoDBObject): Array[Byte] = {
-		mongoResult.getAs[Array[Byte]]("file").get
-	}
+	def saveXMLFileFromMongoAndLoadTheXML(fileName: String, byteDataFromMongo: Array[Byte]): Result = {
+		val outputFolder = s"./tmp/"
 
-	def toMongoDB(xml: Elem) = {
+		val pathFile: File = new File(outputFolder)
+		if (!pathFile.exists) pathFile.mkdirs
 
-		val dataToMongo = MongoDBObject(writesString(xml))
+		val bos = new BufferedOutputStream(new FileOutputStream(s"$outputFolder/download-$fileName"))
+		Stream.continually(bos.write(byteDataFromMongo))
+		bos.close()
 
-		coll.insert(dataToMongo)
-
-		coll.find().foreach(println)
+		Ok("File downloaded")
 	}
 
 	def printDetail(xml: Elem) = {
