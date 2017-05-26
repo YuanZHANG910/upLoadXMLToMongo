@@ -43,6 +43,8 @@ private object AppDependencies {
     "com.typesafe.akka" % "akka-testkit_2.11" % akkaVersion,
     "org.typelevel" %% "cats" % catsVersion,
     "org.mongodb" %% "casbah"% "2.7.3",
+    "io.spray" %%  "spray-json" % "1.3.3",
+    "org.json4s"  %% "json4s-jackson" % "3.5.2",
     "com.google.code.findbugs" % "jsr305" % "2.0.3")
 
   trait TestDependencies {

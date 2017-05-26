@@ -4,16 +4,25 @@ import java.io.{BufferedOutputStream, File, FileOutputStream}
 import java.nio.file.{Paths, Files => javaFiles}
 
 import com.mongodb.casbah.Imports._
+import org.json4s
+import org.json4s.Xml.{toJson, toXml}
+import org.json4s.jackson.JsonMethods._
 import play.api.libs.Files
-import play.api.libs.json._
 import play.api.mvc._
+import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter.interceptIdempotentAction
+
+import scala.concurrent.Future
+//import spray.json._
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
+import scala.xml.Utility.trim
 import scala.xml.{Elem, Node, Text}
+
 
 case class TestFile(fileName: String, filePath:String, xml: Elem)
 
 object MicroserviceHelloWorld extends MicroserviceHelloWorld
+
 
 trait MicroserviceHelloWorld extends BaseController {
 
@@ -24,7 +33,11 @@ trait MicroserviceHelloWorld extends BaseController {
 	//Collection name
 	val coll: MongoCollection = db("test")
 
-	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = Action(parse.multipartFormData) { request =>
+	implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
+	implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
+
+	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] {
+		request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
 				val file = formData.files.head
@@ -34,18 +47,18 @@ trait MicroserviceHelloWorld extends BaseController {
 
 				printDetail(xml)
 
-				val saveToMongoQuery = MongoDBObject("FileName" -> testFile.fileName, writesString(xml), "FileEntity" -> fileInByteArray)
+				val saveToMongoQuery = MongoDBObject("FileName" -> testFile.fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
 				coll.insert(saveToMongoQuery)
 
 				val idInMongo = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
 
-				Ok(s"File saved at $idInMongo")
-			case _ => BadRequest("not saved")
+				Future.successful(Ok(s"File saved at $idInMongo"))
+			case _ => Future.successful(BadRequest("not saved"))
 
 		}
 	}
 
-	def downXMLFromMongoById(idInMongo: String) = Action { request =>
+	def downXMLFromMongoById(idInMongo: String) = interceptIdempotentAction[AnyContent] { request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -56,12 +69,16 @@ trait MicroserviceHelloWorld extends BaseController {
 
 	}
 
-	def downXMLFromMongoByName(nameInMongo: String) = Action { request =>
+	def downXMLFromMongoByName(nameInMongo: String) = interceptIdempotentAction[AnyContent] { request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("FileName" -> nameInMongo),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
 
 		saveXMLFileFromMongoAndLoadTheXML(nameInMongo, byteDataFromMongo)
+	}
+
+	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
+		Future.successful(Ok("hi"))
 	}
 
 	def saveXMLFileFromUserAndLoadTheXML(file: MultipartFormData.FilePart[Files.TemporaryFile]): TestFile = {
@@ -80,7 +97,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		TestFile(filename, fileSavingPath, xml)
 	}
 
-	def saveXMLFileFromMongoAndLoadTheXML(fileName: String, byteDataFromMongo: Array[Byte]): Result = {
+	def saveXMLFileFromMongoAndLoadTheXML(fileName: String, byteDataFromMongo: Array[Byte]): Future[Result] = {
 		val outputFolder = s"./tmp/"
 
 		val pathFile: File = new File(outputFolder)
@@ -90,18 +107,33 @@ trait MicroserviceHelloWorld extends BaseController {
 		Stream.continually(bos.write(byteDataFromMongo))
 		bos.close()
 
-		Ok("File downloaded")
+		Future.successful(Ok("File downloaded"))
 	}
 
 	def printDetail(xml: Elem) = {
+		println()
 		println("The xml you have upload:")
 		println(xml)
-		println("The json is:")
-		println(Json.toJson(xml))
 		println()
+		println("The json is:")
+		val json: json4s.JValue = toJson(xml)
+		println(pretty(json))
+		println()
+		println("Back to the XML is:")
+		val xml2 = toXml(json)
+		println(toXml(json))
+		println()
+
+		println("Are those XML files the same:")
+		println("The xml you have upload:")
+		println(trim(xml.head))
+		println("The xml after convert:")
+		println(trim(xml2.head))
+		println(if(trim(xml.head) == trim(xml2.head)) true
+						else false)
 	}
 
-	def writesString(e: Node): (String, Any) = {
+	def xmlToJson(e: Node): (String, Any) = {
 		e.label -> writeString(e)
 	}
 
@@ -114,18 +146,30 @@ trait MicroserviceHelloWorld extends BaseController {
 			}
 	}
 
-	implicit val writer = new Writes[Node] {
-		def writes(e: Node): JsValue = {
-			JsObject(Map(e.label -> write(e)))
-		}
-		def write(e: Node): JsValue = {
-			if (e.child.count(_.isInstanceOf[Text]) == 1)
-				JsString(e.text)
-			else
-				JsObject(e.child.collect {
-					case e: Elem => e.label -> write(e)
-				} )
-		}
-	}
+//	implicit object NodeFormat extends JsonFormat[Node] {
+//		def write(node: Node) =
+//			if (node.child.count(_.isInstanceOf[Text]) == 1)
+//				JsString(node.text)
+//			else
+//				JsObject(node.child.collect {
+//					case e: Elem => e.label -> write(e)
+//				}: _*)
+//
+//		def read(jsValue: JsValue) = null // not implemented
+//	}
+
+//	implicit val writer = new Writes[Node] {
+//		def writes(e: Node): JsValue = {
+//			JsObject(Map(e.label -> write(e)))
+//		}
+//		def write(e: Node): JsValue = {
+//			if (e.child.count(_.isInstanceOf[Text]) == 1)
+//				JsString(e.text)
+//			else
+//				JsObject(e.child.collect {
+//					case e: Elem => e.label -> write(e)
+//				} )
+//		}
+//	}
 
 }

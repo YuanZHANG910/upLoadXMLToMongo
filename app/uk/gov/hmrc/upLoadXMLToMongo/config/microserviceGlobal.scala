@@ -19,6 +19,11 @@ object AuthParamsControllerConfiguration extends AuthParamsControllerConfig {
   lazy val controllerConfigs = ControllerConfiguration.controllerConfigs
 }
 
+//object MicroserviceInterceptIdempotentFilter extends InterceptIdempotentFilter with AppName with MicroserviceFilterSupport {
+//  override def controllerConfigs: Config = ControllerConfiguration.controllerConfigs
+//  override def controllerNeedsInterceptIdempotent(controllerName: String) = controllerConfigs.getBoolean("")
+//}
+
 object MicroserviceAuditFilter extends AuditFilter with AppName with MicroserviceFilterSupport {
   override val auditConnector = MicroserviceAuditConnector
   override def controllerNeedsAuditing(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsAuditing

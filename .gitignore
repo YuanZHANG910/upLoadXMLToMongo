@@ -29,7 +29,7 @@ server.pid
 /.settings
 target
 .target
-test-result
+InterceptIdempotent-result
 tmp
 .idea_modules
 bin

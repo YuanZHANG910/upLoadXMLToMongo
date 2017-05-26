@@ -1,5 +1,7 @@
 # microservice specific routes
 
-PUT        /uploadXMLToMongo/                         uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.uploadXMLToMongo
+GET        /getLogRequest                             uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.getLogRequest
+
+PUT        /uploadXMLToMongo                          uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.uploadXMLToMongo
 GET        /downXMLFromMongoById/:idInMongo           uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.downXMLFromMongoById(idInMongo:String)
 GET        /downXMLFromMongoByName/:nameInMongo       uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.downXMLFromMongoByName(nameInMongo:String)
