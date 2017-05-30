@@ -7,14 +7,12 @@ import com.mongodb.casbah.Imports._
 import org.json4s
 import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
+import play.api.Logger
 import play.api.libs.Files
 import play.api.mvc._
-//import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter.interceptIdempotentAction
-
-import scala.concurrent.Future
-//import spray.json._
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
+import scala.concurrent.Future
 import scala.xml.Utility.trim
 import scala.xml.{Elem, Node, Text}
 
@@ -22,7 +20,6 @@ import scala.xml.{Elem, Node, Text}
 case class TestFile(fileName: String, filePath:String, xml: Elem)
 
 object MicroserviceHelloWorld extends MicroserviceHelloWorld
-
 
 trait MicroserviceHelloWorld extends BaseController {
 
@@ -37,7 +34,7 @@ trait MicroserviceHelloWorld extends BaseController {
 	implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
 	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = Action.async(MultipartFormDataBodyParser) {
-		request =>
+		request => Logger.info(s"the request body is: ${request.body.toString}")
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
 				val file = formData.files.head
