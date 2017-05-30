@@ -2,11 +2,10 @@ package uk.gov.hmrc.upLoadXMLToMongo
 
 import play.api.Logger
 import play.api.mvc._
-import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter.isRequiringNRepudiation
 
 import scala.concurrent.Future
 
-object InterceptIdempotentFilter extends Controller {
+trait InterceptIdempotentFilter extends Filter {
 
   val idempotent =  List("PUT", "POST", "PATCH", "DELETE")
 

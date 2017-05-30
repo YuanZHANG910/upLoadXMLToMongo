@@ -9,7 +9,7 @@ import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
 import play.api.libs.Files
 import play.api.mvc._
-import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter.interceptIdempotentAction
+//import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter.interceptIdempotentAction
 
 import scala.concurrent.Future
 //import spray.json._
@@ -36,7 +36,7 @@ trait MicroserviceHelloWorld extends BaseController {
 	implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
 	implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
-	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] {
+	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = Action.async(MultipartFormDataBodyParser) {
 		request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
@@ -58,7 +58,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		}
 	}
 
-	def downXMLFromMongoById(idInMongo: String) = interceptIdempotentAction[AnyContent] { request =>
+	def downXMLFromMongoById(idInMongo: String) = Action.async(MultipartFormDataBodyParser) { request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -69,7 +69,7 @@ trait MicroserviceHelloWorld extends BaseController {
 
 	}
 
-	def downXMLFromMongoByName(nameInMongo: String) = interceptIdempotentAction[AnyContent] { request =>
+	def downXMLFromMongoByName(nameInMongo: String) = Action.async(MultipartFormDataBodyParser) { request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("FileName" -> nameInMongo),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -77,7 +77,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		saveXMLFileFromMongoAndLoadTheXML(nameInMongo, byteDataFromMongo)
 	}
 
-	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
+	def getLogRequest: Action[AnyContent] = Action.async(anyContentBodyParser) { implicit request =>
 		Future.successful(Ok("hi"))
 	}
 
