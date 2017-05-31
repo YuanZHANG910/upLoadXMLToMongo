@@ -5,7 +5,7 @@ import play.api.mvc._
 
 import scala.concurrent.Future
 
-trait InterceptIdempotentFilter extends Filter {
+trait InterceptIdempotentFilter {
 
   val idempotent =  List("PUT", "POST", "PATCH", "DELETE")
 

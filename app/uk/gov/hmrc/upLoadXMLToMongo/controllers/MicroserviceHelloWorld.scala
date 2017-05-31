@@ -7,10 +7,10 @@ import com.mongodb.casbah.Imports._
 import org.json4s
 import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
-import play.api.Logger
 import play.api.libs.Files
 import play.api.mvc._
 import uk.gov.hmrc.play.microservice.controller.BaseController
+import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter
 
 import scala.concurrent.Future
 import scala.xml.Utility.trim
@@ -19,9 +19,8 @@ import scala.xml.{Elem, Node, Text}
 
 case class TestFile(fileName: String, filePath:String, xml: Elem)
 
-object MicroserviceHelloWorld extends MicroserviceHelloWorld
 
-trait MicroserviceHelloWorld extends BaseController {
+object MicroserviceHelloWorld extends BaseController with InterceptIdempotentFilter {
 
 	// Connect to default - localhost, 27017
 	val mongoClient= MongoClient("localhost", 27017)
@@ -33,8 +32,8 @@ trait MicroserviceHelloWorld extends BaseController {
 	implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
 	implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
-	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = Action.async(MultipartFormDataBodyParser) {
-		request => Logger.info(s"the request body is: ${request.body.toString}")
+	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] {
+		request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
 				val file = formData.files.head
@@ -55,7 +54,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		}
 	}
 
-	def downXMLFromMongoById(idInMongo: String) = Action.async(MultipartFormDataBodyParser) { request =>
+	def downXMLFromMongoById(idInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent] { request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -66,7 +65,7 @@ trait MicroserviceHelloWorld extends BaseController {
 
 	}
 
-	def downXMLFromMongoByName(nameInMongo: String) = Action.async(MultipartFormDataBodyParser) { request =>
+	def downXMLFromMongoByName(nameInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent]{ request =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("FileName" -> nameInMongo),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -74,7 +73,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		saveXMLFileFromMongoAndLoadTheXML(nameInMongo, byteDataFromMongo)
 	}
 
-	def getLogRequest: Action[AnyContent] = Action.async(anyContentBodyParser) { implicit request =>
+	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
 		Future.successful(Ok("hi"))
 	}
 
@@ -107,7 +106,7 @@ trait MicroserviceHelloWorld extends BaseController {
 		Future.successful(Ok("File downloaded"))
 	}
 
-	def printDetail(xml: Elem) = {
+	def printDetail(xml: Elem): Unit = {
 		println()
 		println("The xml you have upload:")
 		println(xml)
@@ -142,31 +141,5 @@ trait MicroserviceHelloWorld extends BaseController {
 				case e: Elem => MongoDBObject(e.label -> writeString(e))
 			}
 	}
-
-//	implicit object NodeFormat extends JsonFormat[Node] {
-//		def write(node: Node) =
-//			if (node.child.count(_.isInstanceOf[Text]) == 1)
-//				JsString(node.text)
-//			else
-//				JsObject(node.child.collect {
-//					case e: Elem => e.label -> write(e)
-//				}: _*)
-//
-//		def read(jsValue: JsValue) = null // not implemented
-//	}
-
-//	implicit val writer = new Writes[Node] {
-//		def writes(e: Node): JsValue = {
-//			JsObject(Map(e.label -> write(e)))
-//		}
-//		def write(e: Node): JsValue = {
-//			if (e.child.count(_.isInstanceOf[Text]) == 1)
-//				JsString(e.text)
-//			else
-//				JsObject(e.child.collect {
-//					case e: Elem => e.label -> write(e)
-//				} )
-//		}
-//	}
 
 }

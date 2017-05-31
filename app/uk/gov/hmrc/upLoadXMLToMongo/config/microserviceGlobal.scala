@@ -15,45 +15,6 @@ import uk.gov.hmrc.play.config.{AppName, ControllerConfig, ServicesConfig}
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
 
-import scala.concurrent.Future
-
-object MicroserviceInterceptIdempotentFilter
-  extends InterceptIdempotentFilter with MicroserviceFilterSupport {
-
-  import scala.concurrent.ExecutionContext.Implicits.global
-
-  def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
-
-    val startTime = System.currentTimeMillis
-
-    Logger.info("this is Idempotent Filter")
-    if (idempotent.contains(requestHeader.method)) {
-      Logger.info("this request is an idempotent request")
-      isRequiringNRepudiation(requestHeader.headers)
-      Logger.info(s"the request headers are: ${requestHeader.headers.toString}")
-    }
-    else {
-      Logger.info("this request is not an idempotent request")
-      isRequiringNRepudiation(requestHeader.headers)
-    }
-
-    nextFilter(requestHeader).map{
-      result =>
-      val endTime = System.currentTimeMillis
-      val requestTime = endTime - startTime
-
-      println(result.body.dataStream)  // this is for response body
-      Logger.info(s"${requestHeader.method} ${requestHeader.uri} " +
-        s"took ${requestTime}ms and returned ${result.header.status} " +
-        s"the request body is: not got at this point"
-      )
-
-      result.withHeaders("*" -> "*")
-    }
-  }
-
-}
-
 class MicroserviceGlobal extends play.api.ApplicationLoader {
   def load(context: Context): Application = {
     LoggerConfigurator(context.environment.classLoader).foreach {
@@ -64,15 +25,14 @@ class MicroserviceGlobal extends play.api.ApplicationLoader {
 }
 
 class ApplicationModule(context: Context) extends BuiltInComponentsFromContext(context)
-  with AhcWSComponents with AppName with ServicesConfig {
+                                          with AhcWSComponents with AppName with ServicesConfig {
 
   lazy val router: Router = new Routes
 
   override lazy val httpFilters: Seq[EssentialFilter] = Seq(
     MicroserviceAuditFilter,
     MicroserviceLoggingFilter,
-    MicroserviceAuthFilter,
-    MicroserviceInterceptIdempotentFilter
+    MicroserviceAuthFilter
   )
 
   object ControllerConfiguration extends ControllerConfig {
