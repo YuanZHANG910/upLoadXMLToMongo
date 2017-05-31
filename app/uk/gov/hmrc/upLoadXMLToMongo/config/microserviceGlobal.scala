@@ -14,16 +14,20 @@ import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, ServicesConfig}
 import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import uk.gov.hmrc.play.http.logging.filters.LoggingFilter
-import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.Future
 
-object MicroserviceInterceptIdempotentFilter extends InterceptIdempotentFilter with MicroserviceFilterSupport with BaseController {
+object MicroserviceInterceptIdempotentFilter
+  extends InterceptIdempotentFilter with MicroserviceFilterSupport {
+
   import scala.concurrent.ExecutionContext.Implicits.global
 
   def apply(nextFilter: (RequestHeader) => Future[Result])(requestHeader: RequestHeader): Future[Result] = {
+
+    val startTime = System.currentTimeMillis
+
     Logger.info("this is Idempotent Filter")
-    if (idempotent.contains(requestHeader.tags.getOrElse("ROUTE_VERB", ""))) {
+    if (idempotent.contains(requestHeader.method)) {
       Logger.info("this request is an idempotent request")
       isRequiringNRepudiation(requestHeader.headers)
       Logger.info(s"the request headers are: ${requestHeader.headers.toString}")
@@ -32,7 +36,20 @@ object MicroserviceInterceptIdempotentFilter extends InterceptIdempotentFilter w
       Logger.info("this request is not an idempotent request")
       isRequiringNRepudiation(requestHeader.headers)
     }
-    nextFilter(requestHeader).map {result => result.withHeaders("non-repudiation" -> "*")}
+
+    nextFilter(requestHeader).map{
+      result =>
+      val endTime = System.currentTimeMillis
+      val requestTime = endTime - startTime
+
+      println(result.body.dataStream)  // this is for response body
+      Logger.info(s"${requestHeader.method} ${requestHeader.uri} " +
+        s"took ${requestTime}ms and returned ${result.header.status} " +
+        s"the request body is: not got at this point"
+      )
+
+      result.withHeaders("*" -> "*")
+    }
   }
 
 }
