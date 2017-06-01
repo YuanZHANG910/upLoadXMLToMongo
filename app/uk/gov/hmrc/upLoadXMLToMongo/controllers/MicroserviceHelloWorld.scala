@@ -15,8 +15,7 @@ import scala.concurrent.Future
 import scala.xml.Utility.trim
 import scala.xml.{Elem, Node, Text}
 
-
-case class TestFile(fileName: String, filePath:String, xml: Elem)
+case class XMLFile(fileName: String, filePath:String, xmlEntity: Elem)
 
 object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 
@@ -31,29 +30,35 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
-				val idInMongo = formData.files.map( file => {
-					val testFile = saveXMLFileFromUserAndLoadTheXML(file)
-					val fileName = testFile.fileName
-					val fileInByteArray = javaFiles.readAllBytes(Paths.get(testFile.filePath))
-					val xml = testFile.xml
-
-					printDetail(xml)
-
-					val saveToMongoQuery = MongoDBObject("FileName" -> fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
-					coll.insert(saveToMongoQuery)
-
-					val mongoId = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
-
-					s"Saved $fileName in mongoDB with ID:$mongoId"
+				val dataFiles = formData.files
+				val isAllXML = dataFiles.map(file => {
+					if (file.contentType.contains("text/xml")) true
+					else false
 				} )
+				if (isAllXML.contains(false)) Future.successful(BadRequest("xml file only"))
+				else {
+					val mongoResult = dataFiles.map(file => {
+						val xmlFile = saveXMLFileFromUserAndLoadTheXML(file)
+						val fileName = xmlFile.fileName
+						val fileInByteArray = javaFiles.readAllBytes(Paths.get(xmlFile.filePath))
+						val xml = xmlFile.xmlEntity
 
-				Future.successful(Ok(s"${idInMongo.map(_.toString)}"))
+						printDetail(xml)
+
+						val saveToMongoQuery = MongoDBObject("FileName" -> fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
+						coll.insert(saveToMongoQuery)
+						val mongoId = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
+
+						s"Saved $fileName in mongoDB with ID:$mongoId"
+					} )
+					Future.successful(Ok(s"${mongoResult.map(_.toString)}"))
+				}
 			case _ => Future.successful(BadRequest("not saved"))
 
 		}
 	}
 
-	def downXMLFromMongoById(idInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent] { request =>
+	def downXMLFromMongoById(idInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent] { _ =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -61,10 +66,9 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		val fileName = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo))).head.get("FileName").toString
 
 		saveXMLFileFromMongoAndLoadTheXML(fileName, byteDataFromMongo)
-
 	}
 
-	def downXMLFromMongoByName(nameInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent]{ request =>
+	def downXMLFromMongoByName(nameInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent]{ _ =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("FileName" -> nameInMongo),
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
@@ -76,7 +80,7 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		Future.successful(Ok("hi"))
 	}
 
-	def saveXMLFileFromUserAndLoadTheXML(file: MultipartFormData.FilePart[Files.TemporaryFile]): TestFile = {
+	def saveXMLFileFromUserAndLoadTheXML(file: MultipartFormData.FilePart[Files.TemporaryFile]): XMLFile = {
 		val directoryPath = s"./tmp/"
 		val fileDir = new java.io.File(directoryPath)
 		if (!fileDir.exists()) fileDir.mkdir()
@@ -89,7 +93,7 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		uploadedXMLFile.moveTo(fileEntity)
 
 		val xml = scala.xml.XML.loadFile(fileEntity)
-		TestFile(filename, fileSavingPath, xml)
+		XMLFile(filename, fileSavingPath, xml)
 	}
 
 	def saveXMLFileFromMongoAndLoadTheXML(fileName: String, byteDataFromMongo: Array[Byte]): Future[Result] = {
@@ -107,23 +111,21 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 
 	def printDetail(xml: Elem): Unit = {
 		println()
-		println("The xml you have upload:")
+		println("The xmlEntity you have upload:")
+		println()
 		println(xml)
 		println()
-		println("The json is:")
+		println("To Json:")
+		println()
 		val json: json4s.JValue = toJson(xml)
 		println(pretty(json))
 		println()
-		println("Back to the XML is:")
+		println("Back to the XML:")
+		println()
 		val xml2 = toXml(json)
 		println(toXml(json))
 		println()
-
 		println("Are those XML files the same:")
-		println("The xml you have upload:")
-		println(trim(xml.head))
-		println("The xml after convert:")
-		println(trim(xml2.head))
 		println(if(trim(xml.head) == trim(xml2.head)) true
 						else false)
 	}
