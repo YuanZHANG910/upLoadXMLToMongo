@@ -2,15 +2,27 @@ package uk.gov.hmrc.upLoadXMLToMongo
 
 import play.api.Logger
 import play.api.libs.Files
+import play.api.libs.json.JsValue
 import play.api.mvc._
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.Future
+import scala.xml.NodeSeq
 
 trait InterceptIdempotentFilter extends BaseController {
 
-
+  implicit val emptyBodyParser: BodyParser[Unit] = parse.empty
   implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
+  implicit val rawBodyParser: BodyParser[RawBuffer] = parse.raw
+  implicit val xmlBodyParser: BodyParser[NodeSeq] = parse.xml
+  implicit val textBodyParser: BodyParser[String] = parse.text
+  implicit val jsonBodyParser: BodyParser[JsValue] = parse.json
+  implicit val urlFormEncodedBodyParser: BodyParser[Map[String, Seq[String]]] = parse.urlFormEncoded
+  implicit val tolerantXmlBodyParser: BodyParser[NodeSeq] = parse.tolerantXml
+  implicit val tolerantTextBodyParser: BodyParser[String] = parse.tolerantText
+  implicit val tolerantJsonBodyParser: BodyParser[JsValue] = parse.tolerantJson
+  implicit val tolerantUrlFormEncodedBodyParser: BodyParser[Map[String, Seq[String]]] = parse.tolerantFormUrlEncoded
+  implicit val temporaryFileBodyParser: BodyParser[Files.TemporaryFile] = parse.temporaryFile
   implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
   val idempotent =  List("PUT", "POST", "PATCH", "DELETE")
