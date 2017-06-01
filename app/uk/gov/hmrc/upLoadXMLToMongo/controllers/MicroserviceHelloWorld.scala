@@ -9,7 +9,6 @@ import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
 import play.api.libs.Files
 import play.api.mvc._
-import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter
 
 import scala.concurrent.Future
@@ -20,17 +19,14 @@ import scala.xml.{Elem, Node, Text}
 case class TestFile(fileName: String, filePath:String, xml: Elem)
 
 
-object MicroserviceHelloWorld extends BaseController with InterceptIdempotentFilter {
+object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 
-	// Connect to default - localhost, 27017
+	// Connect to default mongo - localhost, 27017
 	val mongoClient= MongoClient("localhost", 27017)
-	//DataBass name
+	//DataBass name "yuanDB"
 	val db: MongoDB = mongoClient("yuanDB")
-	//Collection name
+	//Collection name "test"
 	val coll: MongoCollection = db("test")
-
-	implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
-	implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
 	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] {
 		request =>

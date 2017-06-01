@@ -1,11 +1,17 @@
 package uk.gov.hmrc.upLoadXMLToMongo
 
 import play.api.Logger
+import play.api.libs.Files
 import play.api.mvc._
+import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.Future
 
-trait InterceptIdempotentFilter {
+trait InterceptIdempotentFilter extends BaseController {
+
+
+  implicit val anyContentBodyParser: BodyParser[AnyContent] = parse.anyContent
+  implicit val MultipartFormDataBodyParser: BodyParser[MultipartFormData[Files.TemporaryFile]] = parse.multipartFormData
 
   val idempotent =  List("PUT", "POST", "PATCH", "DELETE")
 
@@ -31,7 +37,7 @@ trait InterceptIdempotentFilter {
 
       Logger.info(s"${request.method} ${request.uri} took ${requestTime}ms")
 
-      furtherAction(request.headers.add("some-header"->"some-header"))
+      furtherAction(request)
     }
 
   def addNRepudiationLogger(headers: Headers): Any = {
