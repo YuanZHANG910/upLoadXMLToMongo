@@ -9,7 +9,6 @@ import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
 import play.api.libs.Files
 import play.api.mvc._
-import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
 import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter
 
 import scala.concurrent.Future

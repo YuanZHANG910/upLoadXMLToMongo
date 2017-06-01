@@ -24,28 +24,27 @@ trait InterceptIdempotentFilter extends BaseController with ServicesConfig {
 
       val startTime = System.currentTimeMillis
 
-      if (idempotent.contains(request.method)) {
-        Logger.info("this request is an idempotent request")
-        addNRepudiationLogger(request.headers)
-        Logger.info(s"the request headers are: ${request.headers}")
-        Logger.info(s"the request body is: ${request.body}")
-      }
-      else {
-        Logger.info("this request is not an idempotent request")
-        addNRepudiationLogger(request.headers)
-      }
+      if (idempotent.contains(request.method)) Logger.info("this request is an idempotent request")
+      else Logger.info("this request is not an idempotent request")
 
-      val endTime = System.currentTimeMillis
-      val requestTime = endTime - startTime
-
-      Logger.info(s"${request.method} ${request.uri} took ${requestTime}ms")
+      addRequestInfToLog(request, startTime)
 
       furtherAction(request)
     }
 
-  def addNRepudiationLogger(headers: Headers): Any = {
-    if (headers.get("non-repudiation").contains("true")) Logger.info("this request is requiring non-repudiation")
+  def addRequestInfToLog[T](request: Request[T], startTime: Long): Any = {
+
+    if (request.headers.get("non-repudiation").contains("true")) Logger.info("this request is requiring non-repudiation")
     else Logger.info("this request is not requiring non-repudiation")
+
+    Logger.info(s"the request headers are: ${request.headers}")
+    Logger.info(s"the request body is: ${request.body}")
+    Logger.info(s"the request is: $request")
+
+    val endTime = System.currentTimeMillis
+    val requestTime = endTime - startTime
+
+    Logger.info(s"${request.method} ${request.uri} took ${requestTime}ms")
   }
 
   implicit val emptyBodyParser: BodyParser[Unit] = parse.empty
