@@ -9,6 +9,7 @@ import org.json4s.Xml.{toJson, toXml}
 import org.json4s.jackson.JsonMethods._
 import play.api.libs.Files
 import play.api.mvc._
+import uk.gov.hmrc.play.audit.http.config.LoadAuditingConfig
 import uk.gov.hmrc.upLoadXMLToMongo.InterceptIdempotentFilter
 
 import scala.concurrent.Future
@@ -17,7 +18,6 @@ import scala.xml.{Elem, Node, Text}
 
 
 case class TestFile(fileName: String, filePath:String, xml: Elem)
-
 
 object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 
@@ -32,19 +32,23 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		request =>
 		request.body match {
 			case formData: MultipartFormData[Files.TemporaryFile] =>
-				val file = formData.files.head
-				val testFile = saveXMLFileFromUserAndLoadTheXML(file)
-				val fileInByteArray = javaFiles.readAllBytes(Paths.get(testFile.filePath))
-				val xml = testFile.xml
+				val idInMongo = formData.files.map( file => {
+					val testFile = saveXMLFileFromUserAndLoadTheXML(file)
+					val fileName = testFile.fileName
+					val fileInByteArray = javaFiles.readAllBytes(Paths.get(testFile.filePath))
+					val xml = testFile.xml
 
-				printDetail(xml)
+					printDetail(xml)
 
-				val saveToMongoQuery = MongoDBObject("FileName" -> testFile.fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
-				coll.insert(saveToMongoQuery)
+					val saveToMongoQuery = MongoDBObject("FileName" -> fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
+					coll.insert(saveToMongoQuery)
 
-				val idInMongo = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
+					val mongoId = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
 
-				Future.successful(Ok(s"File saved at $idInMongo"))
+					s"Saved $fileName in mongoDB with ID:$mongoId"
+				} )
+
+				Future.successful(Ok(s"${idInMongo.map(_.toString)}"))
 			case _ => Future.successful(BadRequest("not saved"))
 
 		}
