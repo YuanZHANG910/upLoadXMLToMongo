@@ -58,6 +58,17 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 		}
 	}
 
+	def checkMongoQuery(query: String): Action[AnyContent] = Action.async { request =>
+		//https://jira.mongodb.org/browse/SERVER-142
+		val readable = List("find", "aggregate", "count", "distinct", "get")
+		if (readable.exists(query.toLowerCase().contains)) Future.successful(Ok("the query is a find query"))
+		else Future.successful(BadRequest("the query is not a find query"))
+	}
+
+	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
+		Future.successful(Ok("hi"))
+	}
+
 	def downXMLFromMongoById(idInMongo: String): Action[AnyContent] = interceptIdempotentAction[AnyContent] { _ =>
 
 		val byteDataFromMongo = coll.findOne(MongoDBObject("_id" -> new ObjectId(idInMongo)),
@@ -74,10 +85,6 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 			MongoDBObject("FileEntity" -> 1)).head.getAs[Array[Byte]]("FileEntity").get
 
 		saveXMLFileFromMongoAndLoadTheXML(nameInMongo, byteDataFromMongo)
-	}
-
-	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
-		Future.successful(Ok("hi"))
 	}
 
 	def saveXMLFileFromUserAndLoadTheXML(file: MultipartFormData.FilePart[Files.TemporaryFile]): XMLFile = {

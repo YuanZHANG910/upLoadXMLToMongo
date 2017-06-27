@@ -3,5 +3,6 @@
 GET        /getLogRequest                             uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.getLogRequest
 
 PUT        /uploadXMLToMongo                          uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.uploadXMLToMongo
+GET        /checkMongoQuery/:query                    uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.checkMongoQuery(query:String)
 GET        /downXMLFromMongoById/:idInMongo           uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.downXMLFromMongoById(idInMongo:String)
 GET        /downXMLFromMongoByName/:nameInMongo       uk.gov.hmrc.upLoadXMLToMongo.controllers.MicroserviceHelloWorld.downXMLFromMongoByName(nameInMongo:String)
