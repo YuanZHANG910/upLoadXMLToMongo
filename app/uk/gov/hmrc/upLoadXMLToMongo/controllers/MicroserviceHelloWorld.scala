@@ -26,43 +26,44 @@ object MicroserviceHelloWorld extends InterceptIdempotentFilter {
 	//Collection name "test"
 	val coll: MongoCollection = db("test")
 
-	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] = interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] {
-		request =>
-		request.body match {
-			case formData: MultipartFormData[Files.TemporaryFile] =>
-				val dataFiles = formData.files
-				val isAllXML = dataFiles.map(file => {
-					if (file.contentType.contains("text/xml")) true
-					else false
-				} )
-				if (isAllXML.contains(false)) Future.successful(BadRequest("xml file only"))
-				else {
-					val mongoResult = dataFiles.map(file => {
-						val xmlFile = saveXMLFileFromUserAndLoadTheXML(file)
-						val fileName = xmlFile.fileName
-						val fileInByteArray = javaFiles.readAllBytes(Paths.get(xmlFile.filePath))
-						val xml = xmlFile.xmlEntity
 
-						printDetail(xml)
 
-						val saveToMongoQuery = MongoDBObject("FileName" -> fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
-						coll.insert(saveToMongoQuery)
-						val mongoId = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
-
-						s"Saved $fileName in mongoDB with ID:$mongoId"
+	def uploadXMLToMongo: Action[MultipartFormData[Files.TemporaryFile]] =
+		interceptIdempotentAction[MultipartFormData[Files.TemporaryFile]] { request =>
+			request.body match {
+				case formData: MultipartFormData[Files.TemporaryFile] =>
+					val dataFiles = formData.files
+					val isAllXML = dataFiles.map(file => {
+						if (file.contentType.contains("text/xml")) true
+						else false
 					} )
-					Future.successful(Ok(s"${mongoResult.map(_.toString)}"))
-				}
-			case _ => Future.successful(BadRequest("not saved"))
+					if (isAllXML.contains(false)) Future.successful(BadRequest("xml file only"))
+					else {
+						val mongoResult = dataFiles.map(file => {
+							val xmlFile = saveXMLFileFromUserAndLoadTheXML(file)
+							val fileName = xmlFile.fileName
+							val fileInByteArray = javaFiles.readAllBytes(Paths.get(xmlFile.filePath))
+							val xml = xmlFile.xmlEntity
 
-		}
+							printDetail(xml)
+
+							val saveToMongoQuery = MongoDBObject("FileName" -> fileName, xmlToJson(xml), "FileEntity" -> fileInByteArray)
+							coll.insert(saveToMongoQuery)
+							val mongoId = coll.findOne(saveToMongoQuery, MongoDBObject("_id" -> 1)).head.get("_id").toString
+
+							s"Saved $fileName in mongoDB with ID:$mongoId"
+						} )
+						Future.successful(Ok(s"${mongoResult.map(_.toString)}"))
+					}
+				case _ => Future.successful(BadRequest("not saved"))
+			}
 	}
 
 	def checkMongoQuery(query: String): Action[AnyContent] = Action.async { request =>
 		//https://jira.mongodb.org/browse/SERVER-142
 		val readable = List("find", "aggregate", "count", "distinct", "get")
-		if (readable.exists(query.toLowerCase().contains)) Future.successful(Ok("the query is a find query"))
-		else Future.successful(BadRequest("the query is not a find query"))
+		if (readable.exists(query.toLowerCase().contains)) Future.successful(Ok("the query is a read query"))
+		else Future.successful(BadRequest("the query is not a read query"))
 	}
 
 	def getLogRequest: Action[AnyContent] = interceptIdempotentAction[AnyContent] { implicit request =>
